@@ -22,6 +22,8 @@ module GiteaIntegration
 
       private
 
+      # ponytail: Gitea timestamps are per second, so two changes within the same second (e.g. close and
+      # reopen) keep whichever delivery lands last; ordering them would need fetching the item from Gitea.
       def stale?(record, attributes)
         stored = record.try(:gitea_updated_at)
         incoming = attributes[:gitea_updated_at]

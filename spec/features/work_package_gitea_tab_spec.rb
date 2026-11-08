@@ -23,7 +23,7 @@ RSpec.describe "Gitea tab on a work package", :js do
     open_tab
 
     expect(page).to have_link("Add the checkout", href: pull_request.html_url)
-    expect(page).to have_css(".op-tab-row--link_selected", text: /GITEA\s*1/i)
+    expect(page).to have_css(".op-tab-row--link_selected", text: /GITEA\s*\(1\)/i)
   end
 
   it "picks up new Gitea data without a reload" do

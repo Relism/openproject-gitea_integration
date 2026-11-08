@@ -170,7 +170,12 @@ class Scenario
     step(:issue_reopened) { @gitea.patch("/repos/#{repo}/issues/#{issue['number']}", { state: "open" }) }
   end
 
-  def step(label, &) = @step.call(label, &)
+  # Gitea's updated_at has one-second resolution and webhooks arrive concurrently; steps at least a
+  # second apart keep "newer payload wins" unambiguous on the OpenProject side, as at human speed.
+  def step(label, &)
+    sleep 1.1
+    @step.call(label, &)
+  end
 
   def ref(key) = @refs.fetch(key)
 
