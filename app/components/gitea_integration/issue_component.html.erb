@@ -1,0 +1,36 @@
+<%=
+  flex_layout(test_selector: "gitea-issue") do |container|
+    container.with_row(mb: 1) do
+      flex_layout(align_items: :center) do |row|
+        row.with_column(mr: 2) do
+          render(GiteaIntegration::StatusLabelComponent.new(status: GiteaIntegration::Status.for(:issue, issue.state), text: t(".states.#{issue.state}")))
+        end
+        row.with_column do
+          render(Primer::Beta::Text.new(color: :muted, font_size: :small)) { "#{issue.repository} ##{issue.number}" }
+        end
+      end
+    end
+
+    container.with_row(mb: 1) do
+      render(
+        Primer::Beta::Link.new(
+          href: issue.html_url, font_weight: :bold, scheme: :primary,
+          target: "_blank", data: { allow_external_link: true }
+        )
+      ) { issue.title }
+    end
+
+    if issue.labels.present?
+      container.with_row { render(GiteaIntegration::LabelsComponent.new(issue.labels)) }
+    end
+
+    container.with_row do
+      render(
+        GiteaIntegration::MetaComponent.new(
+          user: issue.gitea_user, time: issue.gitea_updated_at,
+          text: t(".opened_by", name: issue.gitea_user&.display_name)
+        )
+      )
+    end
+  end
+%>

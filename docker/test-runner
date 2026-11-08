@@ -1,0 +1,34 @@
+#!/bin/bash
+# Runs inside the test container (see bin/dev test). Migrates the test database and rebuilds
+# frontend assets only when their inputs changed, then runs RSpec on the plugin specs.
+set -euo pipefail
+cd /app
+
+plugin=vendor/plugins/openproject-gitea_integration
+mkdir -p tmp log
+fingerprint() { cat "$@" 2>/dev/null | sha256sum | cut -d' ' -f1; }
+stale() { [ "$(cat "tmp/$1.sha" 2>/dev/null)" != "$2" ]; }
+
+migrations=$(ls db/migrate "$plugin/db/migrate" | fingerprint /dev/stdin)
+if stale migrations "$migrations"; then
+  echo "==> Migrating the test database"
+  bundle exec rails db:create db:migrate >/dev/null
+  echo "$migrations" > tmp/migrations.sha
+fi
+
+assets=$(fingerprint "$plugin"/frontend/module/* "$plugin"/config/locales/*.yml)
+if [ "${SKIP_ASSETS:-0}" != 1 ] && stale assets "$assets"; then
+  echo "==> Building frontend assets (needed by feature specs; first build takes several minutes)"
+  DATABASE_URL=nulldb://db bundle exec rails openproject:plugins:register_frontend assets:precompile >/dev/null
+  cp config/frontend_assets.manifest.json public/assets/frontend_assets.manifest.json
+  echo "$assets" > tmp/assets.sha
+fi
+
+# Plugin-relative paths (spec/models/…, spec/foo_spec.rb:12) are resolved inside the plugin.
+args=()
+for arg in "$@"; do
+  [ -e "$plugin/${arg%%:*}" ] && arg="$plugin/$arg"
+  args+=("$arg")
+done
+[ ${#args[@]} -eq 0 ] && args=("$plugin/spec")
+exec bundle exec rspec "${args[@]}"

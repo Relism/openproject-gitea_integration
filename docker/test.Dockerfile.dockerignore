@@ -1,0 +1,9 @@
+# Applies to the core context (.openproject); keeps specs, unlike core's own .dockerignore.
+.git
+**/node_modules
+frontend/.angular
+tmp
+log
+public/assets
+config/database.yml
+Gemfile.plugins

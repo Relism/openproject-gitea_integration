@@ -1,0 +1,23 @@
+<%= render(Primer::Beta::Details.new(reset: true, open: failing?, test_selector: "gitea-checks")) do |details| %>
+  <% details.with_summary(button: false, classes: "op-gitea-checks--summary") do %>
+    <%= render(Primer::Beta::Octicon.new(icon: summary_status.icon, classes: "op-gitea-checks--icon #{summary_status.icon_class}")) %>
+    <%= render(Primer::Beta::Text.new(font_size: :small, color: :muted)) { summary_text } %>
+    <%= render(Primer::Beta::Octicon.new(icon: :"chevron-down", size: :xsmall, color: :muted)) %>
+  <% end %>
+  <% details.with_body do %>
+    <ul class="op-gitea-checks--list">
+      <% checks.each do |check| %>
+        <li class="op-gitea-checks--item" data-test-selector="gitea-check">
+          <%= render(Primer::Beta::Octicon.new(icon: check_status(check).icon, classes: "op-gitea-checks--icon #{check_status(check).icon_class}", "aria-label": t(".states.#{check.successful? ? :passed : check.state}", count: 1))) %>
+          <%= render(Primer::Beta::Text.new(font_weight: :semibold, font_size: :small)) { check.context } %>
+          <% if check.description.present? %>
+            <%= render(Primer::Beta::Text.new(font_size: :small, color: :muted)) { check.description } %>
+          <% end %>
+          <% if check.target_url.present? %>
+            <%= render(Primer::Beta::Link.new(href: check.target_url, font_size: :small, ml: :auto, target: "_blank", data: { allow_external_link: true })) { t(".details") } %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+<% end %>

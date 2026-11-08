@@ -1,0 +1,41 @@
+# Test stack: `bin/dev test` (see README.md). Postgres keeps its data in a volume so migrations run once.
+name: opgitea-test
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: p4ssw0rd
+      POSTGRES_DB: appdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  test:
+    build:
+      context: .openproject
+      dockerfile: ../docker/test.Dockerfile
+      additional_contexts:
+        base: service:test-base
+        plugin: .
+    image: openproject-gitea:test
+    environment:
+      DATABASE_URL: postgres://appuser:p4ssw0rd@db/appdb
+      OPENPROJECT_COLLABORATIVE__EDITING__HOCUSPOCUS__SECRET: secret12345
+    depends_on: [db]
+    shm_size: 2g
+
+  # Core's CI image (Ruby, Node, Chrome) at the pinned core version; only used as the base of `test`.
+  test-base:
+    entrypoint: ["true"]
+    build:
+      context: .openproject
+      dockerfile: docker/ci/Dockerfile
+      args:
+        RUBY_VERSION: ${CORE_RUBY_VERSION:?run via bin/dev}
+        APP_USER_UID: "1000"
+        APP_USER_GID: "1000"
+    image: openproject-gitea:test-base
+
+volumes:
+  pgdata:

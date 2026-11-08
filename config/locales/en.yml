@@ -1,0 +1,168 @@
+en:
+  activerecord:
+    models:
+      gitea_branch:
+        one: "Gitea branch"
+        other: "Gitea branches"
+      gitea_check:
+        one: "Gitea check"
+        other: "Gitea checks"
+      gitea_commit:
+        one: "Gitea commit"
+        other: "Gitea commits"
+      gitea_issue:
+        one: "Gitea issue"
+        other: "Gitea issues"
+      gitea_pull_request:
+        one: "Gitea pull request"
+        other: "Gitea pull requests"
+      gitea_user:
+        one: "Gitea user"
+        other: "Gitea users"
+      gitea_workflow_run:
+        one: "Gitea workflow run"
+        other: "Gitea workflow runs"
+
+  permission_show_gitea_content: "Show Gitea content"
+  project_module_gitea: "Gitea"
+
+  gitea_integration:
+    journal:
+      commit_pushed: "**Commit pushed:** %{user} pushed %{commit} to %{branch} in %{repository}.%{quote}"
+      pull_request_opened: "**Pull request opened:** %{user} opened %{pull_request} in %{repository}."
+      pull_request_opened_draft: "**Draft pull request opened:** %{user} opened the draft %{pull_request} in %{repository}."
+      pull_request_closed: "**Pull request closed:** %{user} closed %{pull_request} in %{repository}."
+      pull_request_merged: "**Pull request merged:** %{user} merged %{pull_request} in %{repository}."
+      pull_request_reopened: "**Pull request reopened:** %{user} reopened %{pull_request} in %{repository}."
+      pull_request_referenced: "**Referenced in pull request:** %{user} referenced this work package in %{pull_request} in %{repository}."
+      pull_request_approved: "**Pull request approved:** %{user} approved %{pull_request} in %{repository}.%{quote}"
+      pull_request_changes_requested: "**Changes requested:** %{user} requested changes on %{pull_request} in %{repository}.%{quote}"
+      pull_request_reviewed: "**Pull request reviewed:** %{user} reviewed %{pull_request} in %{repository}.%{quote}"
+      pull_request_commented: "**Commented on pull request:** %{user} commented on %{target} in %{repository}.%{quote}"
+      issue_opened: "**Issue opened:** %{user} opened %{issue} in %{repository}."
+      issue_closed: "**Issue closed:** %{user} closed %{issue} in %{repository}."
+      issue_reopened: "**Issue reopened:** %{user} reopened %{issue} in %{repository}."
+      issue_referenced: "**Referenced in issue:** %{user} referenced this work package in %{issue} in %{repository}."
+      issue_commented: "**Commented on issue:** %{user} commented on %{target} in %{repository}.%{quote}"
+
+    settings:
+      title: "Gitea integration"
+      actor: "Gitea actor"
+      actor_caption: >
+        The OpenProject user whose API key Gitea uses in the webhook URL. When set, requests authenticated
+        as any other user are rejected. This user posts the automated comments on work packages.
+      webhook_secret: "Webhook secret"
+      webhook_secret_caption: >
+        The secret entered in Gitea's webhook form. OpenProject verifies the X-Gitea-Signature header of every
+        request against it and rejects payloads that do not match.
+      no_secret_warning: >
+        No webhook secret is configured, so OpenProject cannot verify that webhook requests come from Gitea.
+        Set a secret here and in Gitea.
+      setup:
+        title: "Connect a Gitea or Forgejo repository or organization"
+        url_html: "In Gitea, open <em>Settings → Webhooks → Add webhook → Gitea</em> and use this target URL, followed by the actor's <a href=\"%{token_url}\">API token</a>:"
+        url_label: "Webhook URL"
+        copy_url: "Copy webhook URL"
+        content_type_html: "Set the <em>HTTP method</em> to <code>POST</code> and the <em>POST content type</em> to <code>application/json</code>."
+        secret_html: "Enter the same <em>Secret</em> as below."
+        events_html: >
+          Under <em>Trigger on</em>, choose <em>All events</em>, or at least: <em>Create, Delete, Push, Issues,
+          Issue Comment, Pull Request, Pull Request Comment, Pull Request Reviewed, Pull Request Synchronized,
+          Commit Status</em> and <em>Workflow Run</em>.
+
+    work_package_tab_component:
+      description_html: "Mention %{code} in a Gitea title, description, comment or commit message to link it here."
+      copy_code: "Copy reference"
+      snippets_button_label: "Git snippets"
+      sections:
+        pull_requests: "Pull requests"
+        issues: "Issues"
+        branches: "Branches"
+        commits: "Commits"
+      empty:
+        pull_requests:
+          title: "No pull requests"
+          description_html: "Mention %{code} in the title or description of a pull request."
+        issues:
+          title: "No issues"
+          description_html: "Mention %{code} in the title, description or a comment of an issue."
+        branches:
+          title: "No branches"
+          description_html: "Name a branch like %{code} to link it."
+        commits:
+          title: "No commits"
+          description_html: "Mention %{code} in a commit message."
+
+    pull_request_component:
+      states:
+        open: "Open"
+        draft: "Draft"
+        merged: "Merged"
+        closed: "Closed"
+      reviews:
+        approved: "Approved by %{name}"
+        changes_requested: "Changes requested by %{name}"
+      files:
+        one: "1 file"
+        other: "%{count} files"
+      opened_by: "Opened by %{name}, updated"
+      merged_by: "Merged by %{name}"
+
+    issue_component:
+      states:
+        open: "Open"
+        closed: "Closed"
+      opened_by: "Opened by %{name}, updated"
+
+    branch_component:
+      copy_name: "Copy branch name"
+      create_pull_request: "Create pull request"
+      created_by: "Created by %{name}, updated"
+      updated: "Updated"
+      workflow_run: "%{name} #%{number}: %{state}"
+      run_states:
+        success: "passed"
+        failure: "failed"
+        cancelled: "cancelled"
+        skipped: "skipped"
+        queued: "queued"
+        waiting: "waiting"
+        requested: "requested"
+        in_progress: "running"
+
+    commit_component:
+      copy_sha: "Copy commit SHA"
+      on_branch: "on %{branch}"
+      empty_message: "<empty commit message>"
+      authored_by: "Authored by %{name}"
+
+    checks_component:
+      all_passed:
+        one: "1 check passed"
+        other: "All %{count} checks passed"
+      details: "Details"
+      states:
+        passed:
+          one: "1 passed"
+          other: "%{count} passed"
+        pending:
+          one: "1 pending"
+          other: "%{count} pending"
+        failure:
+          one: "1 failing"
+          other: "%{count} failing"
+        error:
+          one: "1 errored"
+          other: "%{count} errored"
+        warning:
+          one: "1 with warnings"
+          other: "%{count} with warnings"
+
+    git_snippets_dialog_component:
+      title: "Git snippets"
+      branch_name: "Branch name"
+      commit_message: "Commit message"
+      create_branch_command: "Create a branch with an empty commit"
+      copy_branch_name: "Copy branch name"
+      copy_commit_message: "Copy commit message"
+      copy_create_branch_command: "Copy command"

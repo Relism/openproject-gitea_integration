@@ -1,0 +1,7 @@
+en:
+  js:
+    gitea_integration:
+      tab_name: "Gitea"
+    work_packages:
+      tabs:
+        gitea: "Gitea"

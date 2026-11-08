@@ -1,0 +1,40 @@
+<% html_title t(:label_administration), t("gitea_integration.settings.title") %>
+
+<%=
+  render(Primer::OpenProject::PageHeader.new) do |header|
+    header.with_title { t("gitea_integration.settings.title") }
+    header.with_breadcrumbs(
+      [{ href: admin_index_path, text: t(:label_administration) },
+       t("gitea_integration.settings.title")]
+    )
+  end
+%>
+
+<% if @settings[:webhook_secret].blank? %>
+  <%= render(Primer::Alpha::Banner.new(scheme: :warning, icon: :alert, mb: 4)) { t("gitea_integration.settings.no_secret_warning") } %>
+<% end %>
+
+<%= render(Primer::Beta::BorderBox.new(mb: 4, test_selector: "gitea-setup-instructions")) do |box| %>
+  <% box.with_header { render(Primer::Beta::Text.new(font_weight: :bold)) { t("gitea_integration.settings.setup.title") } } %>
+  <% box.with_body do %>
+    <ol class="op-gitea-setup">
+      <li>
+        <%= t("gitea_integration.settings.setup.url_html", token_url: my_access_tokens_path) %>
+        <%= render(Primer::OpenProject::InputGroup.new(mt: 1, mb: 2)) do |group|
+              group.with_text_input(
+                name: :webhook_url, label: t("gitea_integration.settings.setup.url_label"), visually_hide_label: true,
+                value: "#{root_url}webhooks/gitea?key=…", readonly: true
+              )
+              group.with_trailing_action_clipboard_copy_button(value: "#{root_url}webhooks/gitea?key=", aria: { label: t("gitea_integration.settings.setup.copy_url") })
+            end %>
+      </li>
+      <li><%= t("gitea_integration.settings.setup.content_type_html") %></li>
+      <li><%= t("gitea_integration.settings.setup.secret_html") %></li>
+      <li><%= t("gitea_integration.settings.setup.events_html") %></li>
+    </ol>
+  <% end %>
+<% end %>
+
+<%= settings_primer_form_with(url: gitea_integration_admin_settings_path, method: :patch) do |f| %>
+  <%= render(GiteaIntegration::Admin::SettingsForm.new(f, actor: @actor, webhook_secret: @settings[:webhook_secret])) %>
+<% end %>

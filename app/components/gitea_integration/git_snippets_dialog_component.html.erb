@@ -1,0 +1,22 @@
+<%=
+  render(Primer::Alpha::Dialog.new(title: t(".title"), size: :medium_portrait, id: "gitea-git-snippets-dialog")) do |dialog|
+    dialog.with_header(show_divider: true, variant: :large)
+    dialog.with_body do
+      flex_layout do |container|
+        [
+          [:branch_name, branch_name],
+          [:commit_message, commit_message],
+          [:create_branch_command, create_branch_command]
+        ].each do |key, value|
+          container.with_row(mb: 1) { render(Primer::Beta::Text.new(font_weight: :bold)) { t(".#{key}") } }
+          container.with_row(mb: 3) do
+            render(Primer::OpenProject::InsetBox.new(test_selector: "gitea-snippet-#{key}")) do |box|
+              box.with_clipboard_copy_button(value:, aria: { label: t(".copy_#{key}") })
+              render(Primer::Beta::Text.new(tag: :pre, mb: 0, classes: "op-gitea-snippet")) { value }
+            end
+          end
+        end
+      end
+    end
+  end
+%>

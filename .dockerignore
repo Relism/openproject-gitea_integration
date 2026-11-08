@@ -1,0 +1,4 @@
+.git
+.openproject
+**/node_modules
+tmp

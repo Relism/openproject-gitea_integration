@@ -1,0 +1,10 @@
+.git
+.openproject
+**/node_modules
+tmp
+spec
+dev
+docker
+*.md
+!README.md
+!CHANGELOG.md

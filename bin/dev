@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# Developer entrypoint for the OpenProject Gitea integration. Needs only Docker (with Compose v2.24+).
+# Works with local and remote Docker daemons: code reaches containers via image builds and
+# `docker compose cp`/tar streams, never via bind mounts.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+CORE_DIR=.openproject
+PLUGIN_IN_TEST=/app/vendor/plugins/openproject-gitea_integration
+PLUGIN_IN_DEMO=/app/vendor/plugins/openproject-gitea_integration
+OPENPROJECT_PORT="${OPENPROJECT_PORT:-8080}"
+GITEA_PORT="${GITEA_PORT:-3001}"
+
+demo() { docker compose -f compose.yaml "$@"; }
+tests() { CORE_RUBY_VERSION="$(cat "$CORE_DIR/.ruby-version")" docker compose -f compose.test.yaml "$@"; }
+say() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
+
+# Streams the plugin's working tree into a container path, replacing what was there.
+sync_plugin() {
+  local compose="$1" service="$2" target="$3" user="$4"
+  tar --exclude=./.git --exclude=./.openproject --exclude=./tmp --exclude='*/node_modules' -cf - . |
+    "$compose" exec -T -u "$user" "$service" sh -c "rm -rf '$target' && mkdir -p '$target' && tar -xf - -C '$target'"
+}
+
+ensure_core() {
+  local ref
+  ref="$(cat .openproject-version)"
+  if [ ! -d "$CORE_DIR/.git" ]; then
+    say "Cloning OpenProject core ($ref) into $CORE_DIR"
+    git clone --quiet --depth 1 --branch "$ref" https://github.com/opf/openproject.git "$CORE_DIR"
+  elif [ "$(git -C "$CORE_DIR" rev-parse --abbrev-ref HEAD)" != "$ref" ]; then
+    say "Switching OpenProject core to $ref"
+    git -C "$CORE_DIR" fetch --quiet --depth 1 origin "$ref:$ref" && git -C "$CORE_DIR" checkout --quiet "$ref"
+  fi
+}
+
+ensure_gitea_admin() {
+  demo exec -T -u git gitea gitea admin user create --admin --username dev --password devdevdev \
+    --email dev@example.com --must-change-password=false >/dev/null 2>&1 || true
+}
+
+copy_dev_tools() {
+  tar -cf - dev | demo exec -T openproject sh -c \
+    "rm -rf /tmp/dev-tools && mkdir -p /tmp/dev-tools && tar -xf - -C /tmp/dev-tools && chown -R app /tmp/dev-tools"
+}
+
+seed() {
+  say "Seeding OpenProject"
+  copy_dev_tools
+  demo exec -T -u app -w /app openproject bin/rails runner /tmp/dev-tools/dev/seed.rb /tmp/opgitea-seed.json
+  if demo exec -T openproject test -s /tmp/opgitea-seed.json; then
+    say "Playing the demo story in Gitea (about 2 minutes)"
+    demo exec -T openproject cat /tmp/opgitea-seed.json | demo run --rm -T --build tools /tools/dev/play.rb story
+    demo exec -T openproject rm -f /tmp/opgitea-seed.json
+  fi
+}
+
+cmd_up() {
+  say "Building and starting OpenProject, Gitea and the Actions runner (first build takes a while)"
+  demo up -d --build --wait "$@"
+  ensure_gitea_admin
+  seed
+  cat <<EOF
+
+  OpenProject  http://localhost:${OPENPROJECT_PORT}   admin / admin
+               → http://localhost:${OPENPROJECT_PORT}/projects/webshop/work_packages  (open a work package, "Gitea" tab)
+  Gitea        http://localhost:${GITEA_PORT}   dev / devdevdev   (repository dev/webshop)
+
+EOF
+}
+
+cmd_sync() {
+  say "Copying plugin code into the running openproject container and restarting it"
+  sync_plugin demo openproject "$PLUGIN_IN_DEMO" root
+  demo restart openproject
+  demo up -d --wait openproject
+}
+
+cmd_test() {
+  ensure_core
+  say "Starting the test container"
+  tests build test-base
+  tests up -d --build --wait db test
+  sync_plugin tests test "$PLUGIN_IN_TEST" dev
+  tests exec -T -e SKIP_ASSETS="${SKIP_ASSETS:-0}" test test-runner "$@"
+}
+
+cmd_lint() {
+  ensure_core
+  tests up -d --build --wait test
+  # Core lints modules/ but excludes vendor/, so lint a copy where core keeps its own modules.
+  sync_plugin tests test /app/modules/gitea_integration_lint dev
+  local status=0
+  tests exec -T -w /app test bundle exec rubocop modules/gitea_integration_lint || status=$?
+  tests exec -T -w /app test bash -c 'bundle exec erb_lint modules/gitea_integration_lint/app/**/*.erb' || status=$?
+  tests exec -T test rm -rf /app/modules/gitea_integration_lint
+  return "$status"
+}
+
+cmd_record() {
+  say "Recording Gitea webhook fixtures (resets the demo Gitea)"
+  docker rm -f opgitea-recorder >/dev/null 2>&1 || true
+  demo up -d --wait gitea runner
+  ensure_gitea_admin
+  demo run --build --name opgitea-recorder tools /tools/dev/record.rb
+  rm -rf spec/fixtures/gitea_webhooks
+  docker cp opgitea-recorder:/tmp/fixtures spec/fixtures/gitea_webhooks
+  docker rm opgitea-recorder >/dev/null
+  say "Fixtures written to spec/fixtures/gitea_webhooks — run bin/dev reset before bin/dev up"
+}
+
+cmd_e2e() {
+  say "End-to-end check against the running demo stack"
+  copy_dev_tools
+  demo exec -T -u app -w /app openproject bin/rails runner /tmp/dev-tools/dev/e2e.rb
+}
+
+usage() {
+  cat <<'EOF'
+Usage: bin/dev <command> [args]
+
+  up [service…]    Build and start OpenProject + Gitea + runner, seed demo data, print logins
+  sync             Copy plugin code into the running OpenProject and restart it (Ruby/ERB changes)
+  e2e              Verify the seeded demo end to end (Gitea → webhook → OpenProject)
+  down             Stop the demo stack (keeps data)
+  reset            Stop the demo stack and delete all of its data
+  logs [service]   Follow logs
+  console          Rails console in the demo OpenProject
+  test [rspec…]    Run the plugin specs in a container with OpenProject core (default: all specs)
+  test-shell       Shell in the test container
+  lint             RuboCop with OpenProject's configuration
+  record           Re-record spec fixtures from a real Gitea (dev/scenario.rb)
+EOF
+}
+
+case "${1:-}" in
+  up) shift; cmd_up "$@" ;;
+  sync) cmd_sync ;;
+  e2e) cmd_e2e ;;
+  down) demo down ;;
+  reset) demo down -v --remove-orphans ;;
+  logs) shift; demo logs -f "$@" ;;
+  console) demo exec -u app -w /app openproject bin/rails console ;;
+  test) shift; cmd_test "$@" ;;
+  test-shell) tests exec test bash ;;
+  lint) cmd_lint ;;
+  record) cmd_record ;;
+  *) usage ;;
+esac

@@ -1,0 +1,53 @@
+<%=
+  content_tag("turbo-frame", id: TURBO_FRAME_ID) do
+    component_wrapper(data: poll_data) do
+      flex_layout(test_selector: "op-work-package-gitea-tab-container") do |container|
+        container.with_row(classes: "d-none", data: { "poll-for-changes-target": "reference", reference_value: items.digest })
+
+        container.with_row(mb: 3) do
+          render(Primer::Alpha::Stack.new(direction: :horizontal, gap: :condensed, align: :center)) do
+            concat(
+              render(Primer::Alpha::StackItem.new(grow: true)) do
+                render(Primer::Beta::Text.new(color: :muted)) { t(".description_html", code: code(linking_code)) }
+              end
+            )
+            concat(render(Primer::Beta::ClipboardCopy.new(value: linking_code, "aria-label": t(".copy_code"))))
+            concat(
+              render(
+                Primer::Beta::Button.new(
+                  tag: :a, size: :small,
+                  href: git_snippets_dialog_project_work_package_gitea_path(**path_params),
+                  data: { controller: "async-dialog" }
+                )
+              ) do |button|
+                button.with_leading_visual_icon(icon: :terminal)
+                t(".snippets_button_label")
+              end
+            )
+          end
+        end
+
+        sections.each do |key, records, icon, item_component, codes|
+          container.with_row(mb: 3) do
+            render(
+              OpPrimer::BorderBoxListComponent.new(
+                container: key, collapsible: true, padding: :condensed,
+                test_selector: "gitea-section-#{key}"
+              )
+            ) do |list|
+              list.with_header(title: t(".sections.#{key}"), count: records.size)
+              list.with_empty_state(
+                title: t(".empty.#{key}.title"),
+                description: t(".empty.#{key}.description_html", code: code(codes[:code])),
+                icon:
+              )
+              records.each do |record|
+                list.with_item { render(item_component.new(record, items:)) }
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+%>

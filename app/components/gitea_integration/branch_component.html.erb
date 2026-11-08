@@ -1,0 +1,67 @@
+<%=
+  flex_layout(test_selector: "gitea-branch") do |container|
+    container.with_row(mb: 1) do
+      render(Primer::Beta::Text.new(color: :muted, font_size: :small)) { branch.repository }
+    end
+
+    container.with_row(mb: 1) do
+      flex_layout(align_items: :center) do |row|
+        row.with_column(mr: 1) { render(Primer::Beta::Octicon.new(icon: :"git-branch", color: :muted)) }
+        row.with_column(mr: 2, classes: "min-width-0") do
+          render(Primer::Beta::Truncate.new) do |truncate|
+            truncate.with_item do
+              render(
+                Primer::Beta::Link.new(
+                  href: branch.html_url, font_weight: :bold, scheme: :primary, title: branch.name,
+                  target: "_blank", data: { allow_external_link: true }
+                )
+              ) { branch.name }
+            end
+          end
+        end
+        row.with_column { render(Primer::Beta::ClipboardCopy.new(value: branch.name, "aria-label": t(".copy_name"))) }
+      end
+    end
+
+    if latest_run
+      container.with_row(mb: 2) do
+        render(
+          Primer::Beta::Link.new(
+            href: latest_run.html_url, target: "_blank", data: { allow_external_link: true },
+            test_selector: "gitea-workflow-run"
+          )
+        ) do
+          render(
+            GiteaIntegration::StatusLabelComponent.new(
+              status: run_status,
+              text: run_label
+            )
+          )
+        end
+      end
+    end
+
+    if branch.compare_url
+      container.with_row(mb: 2) do
+        render(
+          Primer::Beta::Button.new(
+            tag: :a, href: branch.compare_url, size: :small, target: "_blank",
+            data: { allow_external_link: true }
+          )
+        ) do |button|
+          button.with_leading_visual_icon(icon: :"git-pull-request")
+          t(".create_pull_request")
+        end
+      end
+    end
+
+    container.with_row do
+      render(
+        GiteaIntegration::MetaComponent.new(
+          user: branch.gitea_user, time: branch.updated_at,
+          text: branch.gitea_user ? t(".created_by", name: branch.gitea_user.display_name) : t(".updated")
+        )
+      )
+    end
+  end
+%>

@@ -1,0 +1,37 @@
+.op-gitea-checks--summary
+  display: inline-flex
+  align-items: center
+  gap: var(--base-size-4)
+  cursor: pointer
+  list-style: none
+
+.op-gitea-checks--list
+  list-style: none
+  margin: var(--base-size-4) 0 0
+  padding: 0
+  border: var(--borderWidth-thin) solid var(--borderColor-muted)
+  border-radius: var(--borderRadius-medium)
+
+.op-gitea-checks--item
+  display: flex
+  align-items: center
+  gap: var(--base-size-8)
+  padding: var(--base-size-4) var(--base-size-8)
+  &:not(:last-child)
+    border-bottom: var(--borderWidth-thin) solid var(--borderColor-muted)
+
+.op-gitea-checks--icon
+  flex-shrink: 0
+
+.op-gitea-ref
+  font-family: var(--fontStack-monospace)
+
+.op-gitea-snippet
+  white-space: pre-wrap
+  word-break: break-all
+  font-family: var(--fontStack-monospace)
+
+.op-gitea-setup
+  padding-left: var(--base-size-20)
+  li + li
+    margin-top: var(--base-size-8)

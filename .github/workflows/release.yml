@@ -1,0 +1,43 @@
+# Publishes OpenProject with this plugin to ghcr.io when a GitHub release is published.
+# Re-run it by hand to rebuild on a newer OpenProject (e.g. openproject_tag=18 once 18.0 is final).
+name: Release image
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      openproject_tag:
+        description: "openproject/openproject tag to build on (default: 18-rc)"
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: |
+          op="${{ inputs.openproject_tag || '18-rc' }}"
+          version="$(sed -n 's/.*s.version *= *"\(.*\)"/\1/p' openproject-gitea_integration.gemspec)"
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/openproject-gitea"
+          echo "op=$op" >> "$GITHUB_OUTPUT"
+          echo "tags=$image:$op-$version,$image:$op" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          build-args: OPENPROJECT_IMAGE=openproject/openproject:${{ steps.meta.outputs.op }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          push: true

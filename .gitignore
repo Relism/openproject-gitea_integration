@@ -1,0 +1,4 @@
+/.openproject/
+/tmp/
+*.gem
+.env

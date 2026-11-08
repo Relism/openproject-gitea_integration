@@ -1,0 +1,25 @@
+# Runs on GitHub Actions and, unchanged, on Gitea/Forgejo Actions with a Docker-capable runner.
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  specs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - run: bin/dev lint
+      - run: bin/dev test
+
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: bin/dev up
+      - run: bin/dev e2e
+      - if: failure()
+        run: docker compose logs --tail 200

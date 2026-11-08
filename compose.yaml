@@ -1,0 +1,111 @@
+# Demo / manual-testing stack: OpenProject (with this plugin baked in) + Gitea + an Actions runner.
+# Driven by bin/dev — see README.md. Everything here is for local use only (fixed dev credentials).
+
+name: opgitea
+
+x-dev-secrets: &dev-secrets
+  # Shared between Gitea and the runner so the runner registers itself on first boot.
+  GITEA_RUNNER_REGISTRATION_TOKEN: ${GITEA_RUNNER_TOKEN:-opgiteaDevRunnerRegistrationToken0001}
+
+services:
+  openproject:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        OPENPROJECT_IMAGE: ${OPENPROJECT_IMAGE:-openproject/openproject:18-rc}
+    image: openproject-gitea:dev
+    environment:
+      OPENPROJECT_HOST__NAME: localhost:${OPENPROJECT_PORT:-8080}
+      # Gitea calls the webhook as http://openproject/…; production only answers known host names.
+      OPENPROJECT_ADDITIONAL__HOST__NAMES: "[openproject]"
+      OPENPROJECT_HTTPS: "false"
+      # Fixed so sessions survive restarts; dev only, never reuse it.
+      SECRET_KEY_BASE: 1114408d4041c33170b0db81f2d6c99bd633a12fd74ac9c9cd51f3821c752797a2f987ac2fbf6059c45b65b87c0554c86d8e234303854dee6fb433f039ba49cb
+      OPENPROJECT_DEFAULT__LANGUAGE: en
+      # A single web process is plenty for a demo and keeps the stack light.
+      OPENPROJECT_WEB_WORKERS: "0"
+      OPENPROJECT_SEED_ADMIN_USER_PASSWORD: admin
+      OPENPROJECT_SEED_ADMIN_USER_PASSWORD_RESET: "false"
+      # Gitea delivers webhooks over the private docker network.
+      OPENPROJECT_SSRF_PROTECTION_IP_ALLOWLIST: 0.0.0.0/0,::0/0
+      GITEA_URL: http://gitea:3000
+    ports:
+      - "${OPENPROJECT_PORT:-8080}:80"
+    volumes:
+      - openproject-pgdata:/var/openproject/pgdata
+      - openproject-assets:/var/openproject/assets
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:80/health_checks/default"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
+
+  gitea:
+    image: ${GITEA_IMAGE:-gitea/gitea:28.3}
+    environment:
+      <<: *dev-secrets
+      USER_UID: "1000"
+      USER_GID: "1000"
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__server__ROOT_URL: http://localhost:${GITEA_PORT:-3001}/
+      # Always build links from ROOT_URL, even for API calls made via the internal hostname.
+      GITEA__server__PUBLIC_URL_DETECTION: legacy
+      GITEA__server__DISABLE_SSH: "true"
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__repository__DEFAULT_BRANCH: main
+      # Without this Gitea refuses to deliver webhooks to hosts on the private docker network.
+      GITEA__security__ALLOWED_HOST_LIST: private
+      GITEA__actions__ENABLED: "true"
+      GITEA__database__SQLITE_JOURNAL_MODE: WAL
+      GITEA__log__LEVEL: Warn
+    ports:
+      - "${GITEA_PORT:-3001}:3000"
+    volumes:
+      - gitea-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  runner:
+    image: ${RUNNER_IMAGE:-gitea/act_runner:0.6}
+    environment:
+      <<: *dev-secrets
+      GITEA_INSTANCE_URL: http://gitea:3000
+      GITEA_RUNNER_NAME: opgitea-runner
+      # Jobs only use `run:` steps, so a tiny image keeps the demo fast and offline-friendly.
+      GITEA_RUNNER_LABELS: ubuntu-latest:docker://alpine:3.22
+    volumes:
+      - runner-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      gitea:
+        condition: service_healthy
+
+  # Plain-Ruby runner for dev/: plays the demo story (bin/dev up) and records fixtures (bin/dev record).
+  tools:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile_inline: |
+        ARG OPENPROJECT_IMAGE
+        FROM $${OPENPROJECT_IMAGE}
+        COPY dev /tools/dev
+      args:
+        OPENPROJECT_IMAGE: ${OPENPROJECT_IMAGE:-openproject/openproject:18-rc}
+    entrypoint: ["ruby"]
+    environment:
+      GITEA_URL: http://gitea:3000
+      FIXTURES_DIR: /tmp/fixtures
+    depends_on:
+      gitea:
+        condition: service_healthy
+
+volumes:
+  openproject-pgdata:
+  openproject-assets:
+  gitea-data:
+  runner-data:

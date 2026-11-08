@@ -1,0 +1,59 @@
+<%=
+  flex_layout(test_selector: "gitea-pull-request") do |container|
+    container.with_row(mb: 1) do
+      flex_layout(align_items: :center, flex_wrap: :wrap) do |row|
+        row.with_column(mr: 2) { render(GiteaIntegration::StatusLabelComponent.new(status:, text: t(".states.#{pull_request.display_state}"))) }
+        row.with_column(mr: 2) do
+          render(Primer::Beta::Text.new(color: :muted, font_size: :small)) { "#{pull_request.repository} ##{pull_request.number}" }
+        end
+        if review_status
+          row.with_column do
+            render(
+              GiteaIntegration::StatusLabelComponent.new(
+                status: review_status,
+                text: t(".reviews.#{pull_request.review_state}", name: pull_request.reviewed_by&.display_name)
+              )
+            )
+          end
+        end
+      end
+    end
+
+    container.with_row(mb: 1) do
+      render(
+        Primer::Beta::Link.new(
+          href: pull_request.html_url, font_weight: :bold, scheme: :primary,
+          target: "_blank", data: { allow_external_link: true }
+        )
+      ) { pull_request.title }
+    end
+
+    if pull_request.head_ref.present?
+      container.with_row(mb: 1) do
+        flex_layout(align_items: :center, flex_wrap: :wrap) do |row|
+          row.with_column(mr: 1) { render(Primer::Beta::Octicon.new(icon: :"git-branch", size: :xsmall, color: :muted)) }
+          row.with_column(mr: 2) do
+            render(Primer::Beta::Text.new(font_size: :small, classes: "op-gitea-ref")) { "#{pull_request.head_ref} → #{pull_request.base_ref}" }
+          end
+          if diff_stats?
+            row.with_column(mr: 1) { render(Primer::Beta::Text.new(font_size: :small, color: :success)) { "+#{pull_request.additions.to_i}" } }
+            row.with_column(mr: 2) { render(Primer::Beta::Text.new(font_size: :small, color: :danger)) { "−#{pull_request.deletions.to_i}" } }
+            row.with_column do
+              render(Primer::Beta::Text.new(font_size: :small, color: :muted)) { t(".files", count: pull_request.changed_files.to_i) }
+            end
+          end
+        end
+      end
+    end
+
+    if pull_request.labels.present?
+      container.with_row { render(GiteaIntegration::LabelsComponent.new(pull_request.labels)) }
+    end
+
+    if checks.any?
+      container.with_row(mb: 1) { render(GiteaIntegration::ChecksComponent.new(checks)) }
+    end
+
+    container.with_row { render(GiteaIntegration::MetaComponent.new(**meta)) }
+  end
+%>

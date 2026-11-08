@@ -1,0 +1,37 @@
+<%=
+  flex_layout(test_selector: "gitea-commit") do |container|
+    container.with_row(mb: 1) do
+      flex_layout(align_items: :center, flex_wrap: :wrap) do |row|
+        row.with_column(mr: 2) do
+          render(Primer::Beta::Text.new(color: :muted, font_size: :small)) { commit.repository }
+        end
+        row.with_column(mr: 1) { render(Primer::Beta::Text.new(font_size: :small, classes: "op-gitea-ref")) { commit.short_sha } }
+        row.with_column(mr: 2) { render(Primer::Beta::ClipboardCopy.new(value: commit.sha, "aria-label": t(".copy_sha"))) }
+        if commit.branch.present?
+          row.with_column do
+            render(Primer::Beta::Text.new(color: :muted, font_size: :small)) { t(".on_branch", branch: commit.branch) }
+          end
+        end
+      end
+    end
+
+    container.with_row(mb: 1) do
+      render(
+        Primer::Beta::Link.new(
+          href: commit.html_url, font_weight: :bold, scheme: :primary,
+          target: "_blank", data: { allow_external_link: true }
+        )
+      ) do
+        commit.subject.presence || t(".empty_message")
+      end
+    end
+
+    if checks.any?
+      container.with_row(mb: 1) { render(GiteaIntegration::ChecksComponent.new(checks)) }
+    end
+
+    container.with_row do
+      render(GiteaIntegration::MetaComponent.new(time: commit.authored_at, text: t(".authored_by", name: commit.author_name)))
+    end
+  end
+%>
