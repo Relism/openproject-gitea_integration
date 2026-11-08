@@ -15,7 +15,7 @@ RSpec.describe "Gitea tab on a work package", :js do
   before { login_as(user) }
 
   def open_tab
-    visit "/work_packages/#{work_package.id}/tabs/gitea"
+    visit "/work_packages/#{work_package.id}/gitea"
     expect(page).to have_test_selector("op-work-package-gitea-tab-container", wait: 30)
   end
 
